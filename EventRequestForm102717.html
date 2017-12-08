@@ -1,0 +1,177 @@
+<button style="border-radius:4px;background-color: #0c2e63;border: none;color: white;padding: 15px 32px;text-align: center;text-decoration: none;display: inline-block;font-size: 16px;"  id="submit2">Submit</button>
+<script>
+$('iframe').load(function(){
+  var iframe = $('iframe');
+  var formElem = $("#form_202",iframe.contents())[0]; //The actual form element, may have to dig for this
+  var minDays = 5;
+
+  var dateElem = $("#el_28037",iframe.contents())[0]; // Date of your event
+  var start = $("#el_28038",iframe.contents())[0]; // Event Start Time
+  var start2 = $("#el_28039",iframe.contents())[0]; // Start AM/PM
+  var end = $("#el_28040",iframe.contents())[0]; // Event End Time
+  var end2 = $("#el_28041",iframe.contents())[0]; //End AM/PM
+
+  var start3 = $("#el_28107",iframe.contents())[0]; //(under facilities request) Set-Up Time
+  var end3 = $("#el_28108",iframe.contents())[0]; //(under facilities request) Take-Down Time
+
+  var roomSetupDate = $("#el_28045",iframe.contents())[0]; // Room Reservation Start Date
+  var roomSetupTime = $("#el_28046",iframe.contents())[0]; // Room Reservation Start Time
+  var roomSetupAM = $("#el_28047",iframe.contents())[0]; // Room Reservation Start AM/PM
+
+  var roomDownDate = $("#el_28049",iframe.contents())[0]; // Room Reservation End Date
+  var roomDownTime = $("#el_28050",iframe.contents())[0]; // Room Reservation End Time
+  var roomDownAM = $("#el_28051",iframe.contents())[0]; // Room Reservation End AM/PM
+
+  var requestEmail = $("#el_28034",iframe.contents())[0]; // Email (on the first line)
+  var chapEmail1 = $("#el_28103",iframe.contents())[0]; // Chaperone 1 Email
+  var chapEmail2 = $("#el_28104",iframe.contents())[0]; // Chaperone 2 Email
+  var chapEmail3 = $("#el_28105",iframe.contents())[0]; // Chaperone 3 Email
+  var submitButton = $("#submitBtn_202",iframe.contents()); // The blue submit button on the bottom (not the darker shaded one from this script)
+
+  submitButton.hide();
+
+  function verifyEmail(email){
+    if (email == "")
+      return {value:true};
+    var aindex = email.indexOf("@");
+    if (aindex == -1){
+      alert (email+": Invalid email address");
+      return {value:false};
+    }
+    if (email.substring(aindex+1) != "pingry.org"){
+      alert (email+": Please use Pingry email addresses");
+      return {value:false};
+    }
+    var returned = {};
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = () => {
+      if (xhttp.readyState == 4 && xhttp.status == 200){
+        returned.value = xhttp.responseText.startsWith("True");
+  	  if (!returned.value)
+  	    alert(email+": That pingry address was not found. Check for typos.");
+      }
+    }
+    xhttp.open ("GET","https://compsci.pingry.k12.nj.us/cgi-bin/cyu/lookup.cgi?username="+email.substring(0,aindex),false);
+    xhttp.send();
+    return returned;
+  }
+  function validEmails(){
+    var p1 = verifyEmail(requestEmail.value);
+	while (!p1.hasOwnProperty("value")){}
+	if (!p1.value) return false;
+	console.log("request email ok");
+
+	var p2 = verifyEmail(chapEmail1.value);
+	while (!p2.hasOwnProperty("value")){}
+	if (!p2.value) return false;
+	console.log("chaperone email ok");
+	var p3 = verifyEmail(chapEmail2.value);
+	while (!p3.hasOwnProperty("value")){}
+	if (!p3.value) return false;
+	console.log("chaperone email ok");
+	var p4 = verifyEmail(chapEmail3.value);
+	while (!p4.hasOwnProperty("value")){}
+	if (!p4.value) return false;
+	console.log("chaperone email ok");
+	return true;
+  }
+  formElem.onclick = function(){
+    start3 = $("#el_25697",iframe.contents())[0]; //el_23609
+    end3 = $("#el_25698",iframe.contents())[0]; //el_23610
+  }
+  function getValueFromElem(elem){
+    var hash = elem.value;
+    for (var i in elem.children){
+        if (elem.children[i].value == hash){
+            return elem.children[i].innerHTML;
+        }
+    }
+    console.error(hash+" was not found!");
+  }
+  function timeCorrect(){
+    var startTime = getValueFromElem(start);
+    var startAM = getValueFromElem(start2);
+    var startDate = Date.parse(dateElem.value+" "+startTime+" "+startAM);
+	var endTime = getValueFromElem(end);
+    var endAM = getValueFromElem(end2);
+	var startFacility = "12:00 AM";
+	var endFacility = "1:00 AM";
+    var endDate = Date.parse(dateElem.value+" "+endTime+" "+endAM);
+	var startFacilityDate = 0;
+	var endFacilityDate = 1;
+	var setupDate = 0;
+	var downDate = 1;
+	if ($(start3).is(":visible")){
+      startFacility = start3.value;
+      startFacility = startFacility.replace(/ /g,'');
+      if (startFacility.endsWith("M"))
+		startFacility = startFacility.substring(0,startFacility.length-2) + " " + startFacility.substring(startFacility.length-2);
+      endFacility = end3.value;
+	  endFacility = endFacility.replace(/ /g,'');
+	  if (endFacility.endsWith("M"))
+		endFacility = endFacility.substring(0,endFacility.length-2) + " " + endFacility.substring(endFacility.length-2);
+	  startFacilityDate = Date.parse(dateElem.value+" "+startFacility);
+	  endFacilityDate = Date.parse(dateElem.value+" "+endFacility);
+
+	  if (dateElem.value != "" && (startFacilityDate != startFacilityDate || endFacilityDate != endFacilityDate)){
+	    alert("Bad input for facility time. Please format your time as XX:XXPM or XX:XX");
+	    return false;
+	  }else if (startFacilityDate > endFacilityDate){
+	    alert("Facility set up time after take down time.");
+        return false;
+	  }
+	}
+	console.log("facility check ok");
+	var willsetup = $(roomSetupDate).is(":visible");
+	var willdown = $(roomDownDate).is(":visible");
+	var setupDate = Number.MIN_VALUE;
+	var downDate = Number.MAX_VALUE;
+	if (willsetup || willdown){
+
+    console.log(setupDate);
+    console.log(downDate);
+    if (willsetup){
+		setupDate = Date.parse(roomSetupDate.value + " "+roomSetupTime +" "+ roomSetupAM);
+	  }if (willdown){
+	    downDate = Date.parse(roomDownDate.value + " "+roomDownTime +" "+ roomDownAM);
+	  }
+    console.log(setupDate.toString());
+    console.log(downDate.toString());
+	  if (setupDate != setupDate){
+	    alert("Bad input for room setup time. Please format your time as XX:XX");
+	    return false;
+	  }else if (downDate != downDate){
+	    alert("Bad input for room take down time. Please format your time as XX:XX");
+	    return false;
+	  }else if (setupDate > downDate){
+	    alert("Room set up time after take down time.");
+        return false;
+	  }
+	}
+	console.log("room check ok");
+
+	if (startDate - Date.now() < minDays*24*60*60*1000){
+	  console.log(startDate - Date.now());
+      console.log(minDays*24*60*60*1000);
+      alert("WARNING: Your event is within " + minDays + " days. As a result, your event may not be able to be accommodated or may incur additional costs.");
+	}
+	console.log("start date check ok");
+	if(startDate > endDate){
+	  alert("Event start time is after end time.");
+      return false;
+    }
+	console.log("event time check ok");
+    return true;
+  }
+  function isValidForm(){
+    return timeCorrect() && validEmails();
+  }
+  end2.addEventListener("change",timeCorrect);
+  $("#submit2").click(function(){
+    if (isValidForm()){
+	  console.log("all checks are good");
+      submitButton.trigger("click");
+    }
+  });
+});
+</script>
